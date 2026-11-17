@@ -1,0 +1,60 @@
+
+pipeline {
+    agent any
+
+    tools {
+        jdk 'JDK17'
+        maven 'M3'
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                echo 'Recuperation du code depuis GitHub'
+                checkout scm
+            }
+        }
+
+        stage('Compilation') {
+            steps {
+                dir('backend') {
+                    sh 'mvn clean compile'
+                }
+            }
+        }
+
+        stage('Tests unitaires') {
+            steps {
+                dir('backend') {
+                    sh 'mvn test'
+                }
+            }
+        }
+
+        stage('Packaging') {
+            steps {
+                dir('backend') {
+                    sh 'mvn package -DskipTests'
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            junit allowEmptyResults: true,
+                  testResults: 'backend/target/surefire-reports/*.xml'
+        }
+
+        success {
+            archiveArtifacts artifacts: 'backend/target/*.jar',
+                             fingerprint: true
+            echo 'SUCCESS : Livrable Backend genere !'
+        }
+
+        failure {
+            echo 'FAILURE : Erreur pendant le build Backend.'
+        }
+    }
+}
